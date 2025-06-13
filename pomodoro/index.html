@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ポモドールタイマー</title>
+    <!-- Tailwind CSSを読み込み -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts (Inter) を読み込み -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Tone.js (音声再生ライブラリ) を読み込み -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <style>
+        /* フォント設定 */
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+        }
+        /* トランジション効果 */
+        .transition-all {
+            transition: all 0.3s ease-in-out;
+        }
+        /* ボタンのフォーカスリングをカスタマイズ */
+        .btn:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.6);
+        }
+        /* アクティブなモードボタンのスタイル */
+        .active-mode {
+            background-color: #3b82f6 !important;
+            color: white !important;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 flex items-center justify-center min-h-screen transition-colors duration-500">
+
+    <div class="w-full max-w-md mx-auto p-4 md:p-8">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8 text-center transform transition-all duration-500">
+
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white mb-2">ポモドールタイマー</h1>
+            <p id="mode-indicator" class="text-gray-500 dark:text-gray-400 mb-6">集中する時間です！</p>
+
+            <!-- モード選択ボタン -->
+            <div class="flex justify-center space-x-2 mb-8">
+                <button id="pomodoro-btn" class="btn active-mode flex-1 py-2 px-4 rounded-lg font-semibold text-sm md:text-base bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-400 dark:hover:bg-blue-500 transition-all">ポモドーロ</button>
+                <button id="short-break-btn" class="btn flex-1 py-2 px-4 rounded-lg font-semibold text-sm md:text-base bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-400 dark:hover:bg-blue-500 transition-all">短い休憩</button>
+                <button id="long-break-btn" class="btn flex-1 py-2 px-4 rounded-lg font-semibold text-sm md:text-base bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-400 dark:hover:bg-blue-500 transition-all">長い休憩</button>
+            </div>
+
+            <!-- タイマー表示エリア -->
+            <div class="relative w-48 h-48 md:w-64 md:h-64 mx-auto mb-8">
+                <svg class="absolute top-0 left-0 w-full h-full" viewBox="0 0 100 100">
+                    <!-- 背景の円 -->
+                    <circle class="text-gray-200 dark:text-gray-700" stroke-width="8" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50" />
+                    <!-- 進捗を示す円 -->
+                    <circle id="progress-ring" class="text-blue-500 transform -rotate-90 origin-center" stroke-width="8" stroke-linecap="round" stroke="currentColor" fill="transparent" r="45" cx="50" cy="50" />
+                </svg>
+                <div id="time-display" class="absolute top-0 left-0 w-full h-full flex items-center justify-center text-4xl md:text-6xl font-bold text-gray-800 dark:text-white">
+                    25:00
+                </div>
+            </div>
+
+            <!-- コントロールボタン -->
+            <div class="flex justify-center items-center space-x-4">
+                <button id="start-pause-btn" class="btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-12 rounded-lg text-lg transition-all transform hover:scale-105">
+                    スタート
+                </button>
+                <button id="reset-btn" class="btn bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 text-gray-800 dark:text-white font-bold p-3 rounded-full transition-all transform hover:scale-105">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                    </svg>
+                </button>
+            </div>
+             <!-- ポモドーロ回数表示 -->
+            <div class="mt-6 text-sm text-gray-500 dark:text-gray-400">
+                完了したポモドーロ: <span id="pomodoro-count" class="font-bold">0</span>回
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM要素の取得 ---
+        const timeDisplay = document.getElementById('time-display');
+        const startPauseBtn = document.getElementById('start-pause-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const pomodoroBtn = document.getElementById('pomodoro-btn');
+        const shortBreakBtn = document.getElementById('short-break-btn');
+        const longBreakBtn = document.getElementById('long-break-btn');
+        const modeIndicator = document.getElementById('mode-indicator');
+        const pomodoroCountDisplay = document.getElementById('pomodoro-count');
+
+        const progressRing = document.getElementById('progress-ring');
+        const radius = progressRing.r.baseVal.value;
+        const circumference = 2 * Math.PI * radius;
+
+        // --- タイマーの状態を管理する変数 ---
+        let timer; // setIntervalのIDを格納
+        let totalSeconds = 25 * 60; // タイマーの総秒数（デフォルトはポモドーロ）
+        let secondsLeft = totalSeconds; // 残り秒数
+        let isRunning = false; // タイマーが実行中かどうかのフラグ
+        let currentMode = 'pomodoro'; // 'pomodoro', 'short', 'long'
+        let pomodoroCount = 0; // 完了したポモドーロの回数
+
+        // --- 初期設定 ---
+        progressRing.style.strokeDasharray = `${circumference} ${circumference}`;
+        progressRing.style.strokeDashoffset = circumference;
+        
+        // --- 音声合成の準備 ---
+        const synth = new Tone.Synth().toDestination();
+
+        // --- イベントリスナー ---
+
+        // スタート/一時停止ボタン
+        startPauseBtn.addEventListener('click', () => {
+            if (isRunning) {
+                pauseTimer();
+            } else {
+                startTimer();
+            }
+        });
+
+        // リセットボタン
+        resetBtn.addEventListener('click', () => {
+            resetTimer();
+        });
+
+        // モード選択ボタン
+        pomodoroBtn.addEventListener('click', () => selectMode('pomodoro'));
+        shortBreakBtn.addEventListener('click', () => selectMode('short'));
+        longBreakBtn.addEventListener('click', () => selectMode('long'));
+
+        // --- タイマー関数 ---
+
+        /**
+         * タイマーを開始する
+         */
+        function startTimer() {
+            // Tone.jsのコンテキストを開始（ユーザー操作が必要）
+            if (Tone.context.state !== 'running') {
+                Tone.start();
+            }
+            isRunning = true;
+            startPauseBtn.textContent = '一時停止';
+            startPauseBtn.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+            startPauseBtn.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+
+            // 1秒ごとにタイマーを更新
+            timer = setInterval(() => {
+                secondsLeft--;
+                updateDisplay();
+                if (secondsLeft <= 0) {
+                    clearInterval(timer);
+                    // 音で通知
+                    synth.triggerAttackRelease("C5", "0.5s"); 
+                    handleTimerEnd();
+                }
+            }, 1000);
+        }
+
+        /**
+         * タイマーを一時停止する
+         */
+        function pauseTimer() {
+            isRunning = false;
+            clearInterval(timer);
+            startPauseBtn.textContent = '再開';
+            startPauseBtn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+            startPauseBtn.classList.add('bg-blue-500', 'hover:bg-blue-600');
+        }
+
+        /**
+         * タイマーをリセットする
+         */
+        function resetTimer() {
+            isRunning = false;
+            clearInterval(timer);
+            setTimerForMode(currentMode); // 現在のモードの時間にリセット
+            startPauseBtn.textContent = 'スタート';
+            startPauseBtn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600', 'bg-blue-500', 'hover:bg-blue-600');
+            startPauseBtn.classList.add('bg-blue-500', 'hover:bg-blue-600');
+        }
+
+        /**
+         * モードを選択し、タイマーを設定する
+         * @param {string} mode - 'pomodoro', 'short', 'long'
+         */
+        function selectMode(mode) {
+            currentMode = mode;
+            setTimerForMode(mode);
+            updateModeUI();
+        }
+        
+        /**
+         * モードに応じてタイマーの時間を設定する
+         * @param {string} mode - 'pomodoro', 'short', 'long'
+         */
+        function setTimerForMode(mode) {
+             clearInterval(timer);
+             isRunning = false;
+             startPauseBtn.textContent = 'スタート';
+             startPauseBtn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+             startPauseBtn.classList.add('bg-blue-500', 'hover:bg-blue-600');
+
+            switch (mode) {
+                case 'pomodoro':
+                    totalSeconds = 25 * 60;
+                    modeIndicator.textContent = '集中する時間です！';
+                    break;
+                case 'short':
+                    totalSeconds = 5 * 60;
+                    modeIndicator.textContent = '少し休憩しましょう';
+                    break;
+                case 'long':
+                    totalSeconds = 15 * 60;
+                    modeIndicator.textContent = '長めの休憩でリフレッシュ';
+                    break;
+            }
+            secondsLeft = totalSeconds;
+            updateDisplay();
+        }
+
+        /**
+         * タイマー終了時の処理
+         */
+        function handleTimerEnd() {
+            if (currentMode === 'pomodoro') {
+                pomodoroCount++;
+                pomodoroCountDisplay.textContent = pomodoroCount;
+                // 4回ごとに長い休憩、それ以外は短い休憩に移行
+                if (pomodoroCount % 4 === 0) {
+                    selectMode('long');
+                } else {
+                    selectMode('short');
+                }
+            } else {
+                // 休憩が終わったらポモドーロモードに戻る
+                selectMode('pomodoro');
+            }
+            // ユーザーに次のセッションの開始を促す
+            startPauseBtn.textContent = 'スタート';
+            // 通知を表示 (ブラウザの通知APIを使用することも可能)
+             setTimeout(() => {
+                alert(modeIndicator.textContent);
+            }, 100);
+        }
+
+        // --- UI更新関数 ---
+
+        /**
+         * 画面の表示を更新する (時間とプログレスリング)
+         */
+        function updateDisplay() {
+            const minutes = Math.floor(secondsLeft / 60);
+            const seconds = secondsLeft % 60;
+            // ゼロパディングして表示
+            timeDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            
+            // プログレスリングの更新
+            const progress = (totalSeconds - secondsLeft) / totalSeconds;
+            const offset = circumference * (1 - progress);
+            progressRing.style.strokeDashoffset = offset;
+
+            // ページのタイトルも更新して、タブで時間を確認できるようにする
+            document.title = `${timeDisplay.textContent} - ${modeIndicator.textContent}`;
+        }
+
+        /**
+         * モード選択ボタンのUIを更新する
+         */
+        function updateModeUI() {
+            const buttons = [pomodoroBtn, shortBreakBtn, longBreakBtn];
+            buttons.forEach(btn => btn.classList.remove('active-mode'));
+
+            switch (currentMode) {
+                case 'pomodoro':
+                    pomodoroBtn.classList.add('active-mode');
+                    break;
+                case 'short':
+                    shortBreakBtn.classList.add('active-mode');
+                    break;
+                case 'long':
+                    longBreakBtn.classList.add('active-mode');
+                    break;
+            }
+        }
+        
+        // --- 初期化 ---
+        // ページ読み込み時にUIを初期状態に設定
+        selectMode('pomodoro');
+    </script>
+</body>
+</html>
