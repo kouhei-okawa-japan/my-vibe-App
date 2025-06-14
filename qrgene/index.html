@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>認証付きQRコード変換</title>
+    <title>ロックなQRコードジェネレーター</title>
     <!-- Google Fontsを使用してモダンな見た目に -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,42 +13,85 @@
     <style>
         body {
             font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            /* ページの背景に暗く、動きのあるグラデーションを設定 */
+            background-image: linear-gradient(135deg, #0a0a0a 0%, #222222 50%, #0a0a0a 100%);
+            background-size: 200% 200%; /* 背景をビューポートより大きくし、アニメーションで動かす */
+            animation: backgroundShift 25s ease infinite alternate; /* 光がゆっくりと動くようなアニメーション */
+            transition: background-color 0.5s ease; /* ダークモードの切り替え用トランジション */
         }
-        .container {
-            transition: opacity 0.5s ease-in-out;
+        /* ダークモード時の背景 */
+        body.dark {
+            background-image: linear-gradient(135deg, #050505 0%, #111111 50%, #050505 100%);
+        }
+
+        /* QRコードのキャンバスにアニメーションを適用 */
+        #qrcode canvas {
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        #qrcode.is-visible canvas {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* カスタムのフォーカスリング */
+        textarea:focus, button:focus {
+            outline: none; /* デフォルトのアウトラインを削除 */
+            box-shadow: 0 0 0 3px rgba(128, 0, 128, 0.45); /* 紫色に合わせたシャドウ */
+        }
+
+        /* SVGアイコンのデフォルトの塗りつぶし色を調整 */
+        .fill-current {
+            fill: currentColor;
+        }
+
+        /* カスタムキーフレーム: 背景の光の動き */
+        @keyframes backgroundShift {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 100% 100%; }
+        }
+
+        /* カスタムキーフレーム: メインカードの輝きアニメーション */
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(100, 20, 255, 0.4), 0 0 30px rgba(100, 20, 255, 0.2); } /* 紫色の輝き */
+            50% { box-shadow: 0 0 25px rgba(255, 50, 10, 0.6), 0 0 40px rgba(255, 50, 10, 0.3); } /* 赤/オレンジ色の輝き */
+        }
+        .animate-glow {
+            animation: glow 6s infinite alternate ease-in-out; /* 6秒ごとに紫と赤の輝きを交互に繰り返す */
         }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-900 flex items-center justify-center min-h-screen p-4">
+<body class="flex items-center justify-center min-h-screen p-4">
 
-    <!-- ========== 認証画面 ========== -->
-    <div id="auth-container" class="container w-full max-w-sm bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8">
-        <h1 class="text-2xl font-bold text-center text-gray-800 dark:text-white mb-6">認証</h1>
-        <p class="text-center text-gray-500 dark:text-gray-400 mb-6">パスワードを入力してください。</p>
-        <div class="mb-4">
-            <label for="password-input" class="sr-only">パスワード</label>
-            <input type="password" id="password-input" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500" placeholder="パスワード">
-        </div>
-        <button id="login-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">ログイン</button>
-        <p id="error-message" class="text-red-500 text-center mt-4 h-5"></p>
-    </div>
+    <!-- ダークモードトグルボタン -->
+    <button id="theme-toggle" class="fixed top-4 right-4 p-3 rounded-full bg-white dark:bg-gray-700 shadow-md transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+        <!-- SVGアイコン (月と太陽) -->
+        <svg class="w-6 h-6 text-gray-800 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path id="moon-icon" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+            <path id="sun-icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707.707M6.343 6.343l-.707-.707m12.728 0l-.707-.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+        </svg>
+    </button>
 
-    <!-- ========== QRコード生成アプリ本体 (最初は非表示) ========== -->
-    <div id="app-container" class="container hidden w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
+    <!-- ========== QRコード生成アプリ本体 ========== -->
+    <div id="app-container" class="container w-full max-w-lg bg-gray-950 rounded-3xl shadow-2xl p-8 md:p-10 transform transition-all duration-300 ease-in-out hover:scale-[1.005] animate-glow border border-gray-800">
         <div class="text-center mb-8">
-            <h1 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">QRコード生成ツール</h1>
-            <p class="text-gray-500 dark:text-gray-400 mt-2">HTMLやテキストをリアルタイムでQRコードに変換します。</p>
+            <!-- タイトルにロックバンド風のグラデーションテキストとより太いフォントを適用 -->
+            <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-purple-600">
+                QRコードジェネレーター
+            </h1>
+            <p class="text-gray-300 mt-3 text-lg">テキストやURLからQRコードを簡単に作成。</p>
         </div>
         <div>
-            <label for="text-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">エンコードされたHTMLまたはテキスト:</label>
-            <textarea id="text-input" rows="6" class="w-full p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-blue-500 transition" placeholder="ここに変換したいテキストを貼り付けてください..."></textarea>
+            <label for="text-input" class="block text-sm font-medium text-gray-300 mb-2">エンコードしたいテキストまたはURL:</label>
+            <textarea id="text-input" rows="6" class="w-full p-4 border border-gray-700 rounded-xl bg-gray-800 text-gray-100 shadow-inner focus:border-purple-500 transition-colors duration-200" placeholder="ここに変換したいテキストを貼り付けてください..."></textarea>
         </div>
-        <div class="mt-6 flex flex-col items-center">
-            <div id="qrcode-container" class="w-64 h-64 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center p-4 border border-dashed border-gray-300 dark:border-gray-600">
-                <div id="qrcode"></div>
-                <span id="placeholder-text" class="text-gray-400 dark:text-gray-500 text-center">テキストを入力してください</span>
+        <div class="mt-8 flex flex-col items-center">
+            <div id="qrcode-container" class="w-64 h-64 bg-gray-900 rounded-xl flex items-center justify-center p-4 border-2 border-gray-700 overflow-hidden relative">
+                <div id="qrcode" class="absolute inset-0 flex items-center justify-center"></div>
+                <span id="placeholder-text" class="text-gray-500 text-center text-lg font-medium absolute inset-0 flex items-center justify-center p-4">ここにQRコードが表示されます</span>
             </div>
-            <button id="download-btn" class="hidden mt-6 w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">QRコードをダウンロード</button>
+            <button id="download-btn" class="hidden mt-8 w-full md:w-3/4 max-w-xs bg-gradient-to-r from-purple-600 to-red-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-red-500/40 hover:from-purple-700 hover:to-red-700 hover:shadow-red-600/50 transition-all duration-300 transform hover:-translate-y-1 focus:ring-offset-2">QRコードをダウンロード</button>
         </div>
     </div>
 
@@ -56,131 +99,151 @@
     <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
 
     <script>
-        // --- 認証機能のスクリプト ---
-        const authContainer = document.getElementById('auth-container');
-        const appContainer = document.getElementById('app-container');
-        const passwordInput = document.getElementById('password-input');
-        const loginBtn = document.getElementById('login-btn');
-        const errorMessage = document.getElementById('error-message');
-
-        // ★★★ このパスワードを変更してください ★★★
-        const CORRECT_PASSWORD = "llll";
-
-        function attemptLogin() {
-            if (passwordInput.value === CORRECT_PASSWORD) {
-                // 認証成功
-                authContainer.classList.add('hidden');
-                appContainer.classList.remove('hidden');
-                // アプリケーションの初期化
-                initializeQRApp();
-            } else {
-                // 認証失敗
-                errorMessage.textContent = "パスワードが違います。";
-                passwordInput.value = ""; // 入力欄をクリア
-                // エラーメッセージを少し揺らす演出
-                authContainer.classList.add('animate-shake');
-                setTimeout(() => {
-                    authContainer.classList.remove('animate-shake');
-                }, 500);
-            }
-        }
-        
-        loginBtn.addEventListener('click', attemptLogin);
-        // Enterキーでもログインできるようにする
-        passwordInput.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') {
-                attemptLogin();
-            }
-        });
-
-        // --- QRコード生成アプリのスクリプト (認証後に初期化) ---
-        function initializeQRApp() {
+        document.addEventListener('DOMContentLoaded', function() {
             const textInput = document.getElementById('text-input');
             const qrcodeContainer = document.getElementById('qrcode-container');
             const qrcodeDiv = document.getElementById('qrcode');
             const placeholderText = document.getElementById('placeholder-text');
             const downloadBtn = document.getElementById('download-btn');
+            const themeToggle = document.getElementById('theme-toggle');
+            const moonIcon = document.getElementById('moon-icon');
+            const sunIcon = document.getElementById('sun-icon');
 
             let qrCodeInstance = null;
-            const MAX_QR_BYTES = 1273;
+            const MAX_QR_BYTES = 1273; // QRコードにエンコードできる最大バイト数 (日本語などマルチバイト文字は注意)
 
+            /**
+             * QRコードを生成する関数
+             */
             const generateQRCode = () => {
                 const text = textInput.value;
 
+                // QRコード表示領域と関連要素をリセット
                 qrcodeDiv.innerHTML = '';
                 qrCodeInstance = null;
-                placeholderText.textContent = "テキストを入力してください";
-                placeholderText.classList.remove('text-red-500');
-                placeholderText.classList.add('hidden');
+                placeholderText.textContent = "ここにQRコードが表示されます";
+                placeholderText.classList.remove('text-red-500', 'hidden'); // エラーや非表示状態をリセット
                 downloadBtn.classList.add('hidden');
-                qrcodeContainer.classList.add('border-dashed', 'bg-gray-100', 'dark:bg-gray-700');
+                qrcodeContainer.classList.remove('border-purple-500', 'dark:border-purple-400'); /* アクティブボーダーを削除 */
+                qrcodeContainer.classList.add('border-gray-700'); /* 通常のボーダーを設定 */
+                qrcodeDiv.classList.remove('is-visible'); // アニメーションクラスを削除
 
+                // テキストが空の場合はプレースホルダーを表示して終了
                 if (text.trim() === '') {
-                    placeholderText.classList.remove('hidden');
                     return;
                 }
                 
+                // バイト数をチェック (UTF-8エンコードでのバイト数)
                 const byteLength = new TextEncoder().encode(text).length;
                 if (byteLength > MAX_QR_BYTES) {
-                    placeholderText.textContent = `テキストが長すぎます (${byteLength}/${MAX_QR_BYTES} バイト)`;
+                    placeholderText.textContent = `テキストが長すぎます (${byteLength} / ${MAX_QR_BYTES} バイト)`;
                     placeholderText.classList.add('text-red-500');
                     placeholderText.classList.remove('hidden');
                     return;
                 }
 
                 try {
-                    qrcodeContainer.classList.remove('border-dashed', 'bg-gray-100', 'dark:bg-gray-700');
+                    // QRコード生成前にプレースホルダーを隠し、コンテナのスタイルを調整
+                    placeholderText.classList.add('hidden');
+                    // qrcodeContainerのボーダーをアクティブな状態にする
+                    qrcodeContainer.classList.remove('border-gray-700');
+                    qrcodeContainer.classList.add('border-purple-500');
+                    
+                    // QRCodejsライブラリを使用してQRコードを生成
                     qrCodeInstance = new QRCode(qrcodeDiv, {
                         text: text,
                         width: 240,
                         height: 240,
-                        colorDark: '#000000',
-                        colorLight: '#ffffff',
-                        correctLevel: QRCode.CorrectLevel.H
+                        // ダークモード時にQRコードの色を反転させる
+                        colorDark: document.documentElement.classList.contains('dark') ? '#ffffff' : '#000000', /* ダークモード時は白 */
+                        colorLight: document.documentElement.classList.contains('dark') ? '#0d0d0d' : '#ffffff', /* ダークモード時は背景に近い暗い色 */
+                        correctLevel: QRCode.CorrectLevel.H // 誤り訂正レベル (高いほどデータ復元力がある)
                     });
-                    downloadBtn.classList.remove('hidden');
+
+                    // QRコード生成後にアニメーションを適用
+                    setTimeout(() => {
+                        qrcodeDiv.classList.add('is-visible');
+                    }, 50); // 小さな遅延でCSSトランジションをトリガー
+
+                    downloadBtn.classList.remove('hidden'); // ダウンロードボタンを表示
                 } catch (e) {
+                    // QRコード生成中にエラーが発生した場合
                     console.error("QRコードの生成エラー:", e);
                     placeholderText.textContent = "不明なエラーが発生しました。";
                     placeholderText.classList.add('text-red-500');
                     placeholderText.classList.remove('hidden');
-                    qrcodeContainer.classList.add('border-dashed', 'bg-gray-100', 'dark:bg-gray-700');
+                    qrcodeContainer.classList.remove('border-purple-500');
+                    qrcodeContainer.classList.add('border-gray-700');
                 }
             };
 
+            /**
+             * 生成されたQRコードを画像としてダウンロードする関数
+             */
             const downloadQRCode = () => {
+                // QRコードインスタンスがない場合は何もしない
                 if (!qrCodeInstance) return;
+
+                // 生成されたキャンバス要素を取得
                 const canvas = qrcodeDiv.querySelector('canvas');
                 if (canvas) {
+                    // a要素を作成し、ダウンロードリンクを設定
                     const a = document.createElement('a');
-                    a.href = canvas.toDataURL('image/png');
-                    a.download = 'qrcode.png';
+                    a.href = canvas.toDataURL('image/png'); // 画像データをData URL形式で取得
+                    a.download = 'qrcode.png'; // ダウンロードファイル名
                     document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
+                    a.click(); // クリックイベントをシミュレートしてダウンロードを開始
+                    document.body.removeChild(a); // 使用後a要素を削除
                 }
             };
-            
+
+            /**
+             * テーマを切り替える関数
+             * @param {boolean} isDark - ダークモードにするかどうか
+             */
+            const setTheme = (isDark) => {
+                if (isDark) {
+                    document.documentElement.classList.add('dark');
+                    document.body.classList.add('dark');
+                    moonIcon.classList.remove('hidden');
+                    sunIcon.classList.add('hidden');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    document.body.classList.remove('dark');
+                    moonIcon.classList.add('hidden');
+                    sunIcon.classList.remove('hidden');
+                    localStorage.setItem('theme', 'light');
+                }
+                // テーマが切り替わったらQRコードの色も更新するために再生成
+                // generateQRCode関数がこの時点で確実に定義されているため、呼び出し可能
+                generateQRCode();
+            };
+
+            // 初期テーマ設定
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            // ロックバンド風デザインのため、デフォルトでダークモードを優先
+            if (savedTheme === 'light') { // 明示的にlightが保存されていればlight
+                setTheme(false);
+            } else { // それ以外 (darkが保存されている、または何も保存されていない/システムがdark) ならdark
+                setTheme(true);
+            }
+
+            // テーマトグルボタンのイベントリスナー
+            themeToggle.addEventListener('click', () => {
+                setTheme(!document.documentElement.classList.contains('dark'));
+            });
+
+            // テキスト入力フィールドの変更を監視し、QRコードをリアルタイムで更新
             textInput.addEventListener('input', generateQRCode);
+            // ダウンロードボタンのクリックイベントを設定
             downloadBtn.addEventListener('click', downloadQRCode);
             
-            generateQRCode(); // アプリ表示時に一度初期化
-        }
-
-        // Tailwind CSSにないアニメーションを追加
-        const style = document.createElement('style');
-        style.innerHTML = `
-            @keyframes shake {
-                10%, 90% { transform: translate3d(-1px, 0, 0); }
-                20%, 80% { transform: translate3d(2px, 0, 0); }
-                30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-                40%, 60% { transform: translate3d(4px, 0, 0); }
-            }
-            .animate-shake {
-                animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both;
-            }
-        `;
-        document.head.appendChild(style);
+            // 初期ロード時にもQRコードを生成（空の場合もプレースホルダー表示のため）
+            // DOMContentLoaded内でgenerateQRCodeが定義された後に呼び出し
+            generateQRCode(); 
+        });
     </script>
 </body>
 </html>
