@@ -3,97 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Vibe App ポータル</title>
+    <title>My Vibe App ポータル - 和風ロック</title>
+    <!-- Google Fontsを使用してモダンな見た目に -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSSを読み込み、デザインを整える -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 0;
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            /* 和風ロックな背景グラデーションと光のアニメーション */
+            background-image: linear-gradient(135deg, #0f1c0f 0%, #2a3d2a 50%, #0f1c0f 100%); /* 深い緑系のグラデーション */
+            background-size: 200% 200%; /* 背景を大きくしてアニメーションで動かす */
+            animation: backgroundShift 25s ease infinite alternate; /* 光がゆっくりと動くようなアニメーション */
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background-color: #f0f2f5; /* Light gray background */
+            padding: 1rem; /* スマホでの余白確保 */
+            color: #e0ffe0; /* 全体的な文字色 */
         }
+
+        /* カスタムキーフレーム: 背景の光の動き */
+        @keyframes backgroundShift {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 100% 100%; }
+        }
+
+        /* メインコンテナの輝きアニメーション */
+        @keyframes subtleGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(50, 205, 50, 0.4), 0 0 30px rgba(50, 205, 50, 0.2); } /* ライムグリーン系の輝き */
+            50% { box-shadow: 0 0 25px rgba(255, 165, 0, 0.6), 0 0 40px rgba(255, 165, 0, 0.3); } /* オレンジ系の輝き */
+        }
+        .animate-subtle-glow {
+            animation: subtleGlow 8s infinite alternate ease-in-out; /* ゆっくりと緑とオレンジの輝きを繰り返す */
+        }
+
         .container {
-            background-color: #ffffff;
-            padding: 2.5em;
-            border-radius: 1rem; /* More rounded corners */
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); /* Softer shadow */
-            max-width: 90%; /* Responsive width */
-            width: 400px; /* Fixed width for larger screens */
+            background-color: rgba(10, 20, 10, 0.9); /* 半透明の濃い緑 */
+            padding: 3em;
+            border-radius: 2rem; /* より大きな角丸で和風感を強調 */
+            border: 2px solid #32cd32; /* ライムグリーンの縁取り */
+            max-width: 95%; /* レスポンシブ対応 */
+            width: 500px; /* PC画面での最大幅 */
             text-align: center;
+            backdrop-filter: blur(5px); /* 背景を少しぼかす */
+            -webkit-backdrop-filter: blur(5px); /* Safari対応 */
+            transition: transform 0.3s ease;
         }
+        .container:hover {
+            transform: translateY(-5px); /* ホバーで少し浮き上がる */
+        }
+
         h1 {
-            color: #1a202c; /* Darker heading color */
-            font-size: 2.2em; /* Slightly larger font */
-            margin-bottom: 1em;
+            /* グラデーションテキストと太いフォント */
+            font-size: 2.5em; /* PC: 2.5em */
+            @media (max-width: 768px) {
+                font-size: 2em; /* スマホ: 2em */
+            }
+            font-weight: 800; /* Extra bold */
+            margin-bottom: 1.5em;
+            text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-green-600; /* 緑系のグラデーション */
+            line-height: 1.3; /* 行の高さを調整 */
         }
+
+        h2 {
+            font-size: 2em; /* PC: 2em */
+            @media (max-width: 768px) {
+                font-size: 1.7em; /* スマホ: 1.7em */
+            }
+            font-weight: 700;
+            color: #e0ffe0; /* 明るい緑に修正 */
+            margin-bottom: 1em;
+            text-shadow: 0 0 8px rgba(160, 255, 160, 0.6), 0 0 15px rgba(160, 255, 160, 0.3); /* 緑色の光る影を追加 */
+        }
+
         ul {
             list-style: none;
             padding: 0;
         }
         li {
-            margin: 1.2em 0;
+            margin: 1.5em 0;
         }
         a {
             text-decoration: none;
-            font-size: 1.3em; /* Larger link font */
-            color: #2b6cb0; /* A shade of blue */
-            display: block; /* Make links block level for better click area */
-            padding: 0.5em 0;
-            border-radius: 0.5rem;
-            transition: background-color 0.3s ease;
+            font-size: 1.4em; /* PC: 1.4em */
+            @media (max-width: 768px) {
+                font-size: 1.2em; /* スマホ: 1.2em */
+            }
+            color: #90ee90; /* 淡い緑色のリンク */
+            display: block;
+            padding: 0.8em 1.5em;
+            border-radius: 1rem; /* 大きな角丸 */
+            background-color: rgba(50, 205, 50, 0.2); /* 半透明のライムグリーン */
+            transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); /* 影を追加 */
         }
         a:hover {
-            background-color: #ebf8ff; /* Light blue on hover */
-            text-decoration: none;
+            background-color: rgba(50, 205, 50, 0.4); /* ホバーで少し濃くなる */
+            color: #ffffff; /* ホバーで白に */
+            transform: translateY(-3px); /* ホバーで少し浮き上がる */
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3); /* 影を強調 */
         }
-        /* Styles for the authentication section */
+
+        /* 認証セクションのスタイル */
         .auth-section {
             display: flex;
             flex-direction: column;
-            gap: 1em;
+            gap: 1.5em; /* 要素間のスペースを広く */
             margin-top: 1.5em;
         }
         .auth-input {
-            padding: 0.8em;
-            border: 1px solid #cbd5e0; /* Light border */
-            border-radius: 0.5rem;
+            padding: 1em;
+            border: 1px solid #3cb371; /* 緑系のボーダー */
+            border-radius: 0.8rem;
             font-size: 1.1em;
             width: 100%;
-            box-sizing: border-box; /* Include padding in width */
+            box-sizing: border-box;
+            background-color: #1a2a1a; /* 濃い緑の背景 */
+            color: #e0ffe0; /* 明るい文字色 */
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .auth-input::placeholder {
+            color: #8fbc8f; /* プレースホルダーの色 */
+        }
+        .auth-input:focus {
+            border-color: #90ee90; /* フォーカス時に明るい緑 */
+            box-shadow: 0 0 0 3px rgba(144, 238, 144, 0.4); /* 緑のシャドウ */
         }
         .auth-button {
-            padding: 0.8em 1.5em;
-            background-color: #3182ce; /* Blue button */
+            padding: 1em 2em;
+            background-image: linear-gradient(to right, #32cd32, #2e8b57); /* 緑系のグラデーションボタン */
             color: white;
             border: none;
-            border-radius: 0.5rem;
+            border-radius: 0.8rem;
             cursor: pointer;
-            font-size: 1.1em;
-            transition: background-color 0.3s ease, transform 0.1s ease;
+            font-size: 1.2em;
+            font-weight: bold;
+            transition: background-image 0.3s ease, transform 0.1s ease, box-shadow 0.3s ease;
+            box-shadow: 0 5px 15px rgba(50, 205, 50, 0.3); /* 影を追加 */
         }
         .auth-button:hover {
-            background-color: #2c5282; /* Darker blue on hover */
-            transform: translateY(-1px); /* Slight lift on hover */
+            background-image: linear-gradient(to right, #2e8b57, #32cd32); /* ホバーでグラデーションが逆転 */
+            transform: translateY(-2px); /* ホバーで少し浮き上がる */
+            box-shadow: 0 8px 20px rgba(50, 205, 50, 0.4); /* 影を強調 */
         }
         .error-message {
-            color: #e53e3e; /* Red for errors */
+            color: #ff6347; /* 赤系のエラーメッセージ */
             margin-top: 1em;
             font-weight: bold;
+            font-size: 1em;
+            min-height: 1.5em; /* エラーメッセージがない時も高さを保持 */
         }
         .hidden {
             display: none;
         }
     </style>
 </head>
-<body>
-    <div class="container">
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="container animate-subtle-glow">
         <!-- 認証セクション -->
         <div id="authContainer" class="auth-section">
-            <h2 class="text-2xl font-bold text-gray-800">認証が必要です</h2>
+            <h2 class="text-2xl font-bold text-white">認証が必要です</h2>
             <input type="password" id="passwordInput" class="auth-input" placeholder="パスワードを入力してください">
             <button id="loginButton" class="auth-button">ログイン</button>
             <p id="errorMessage" class="error-message hidden">パスワードが間違っています。</p>
@@ -101,10 +173,12 @@
 
         <!-- メインコンテンツ (最初は非表示) -->
         <div id="mainContent" class="hidden">
-            <h1 class="text-3xl font-extrabold mb-8">My Vibe App コレクション</h1>
+            <h1 class="text-3xl font-extrabold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-green-600">
+                My Vibe App コレクション
+            </h1>
             <ul>
-                <li><a href="pomodoro/" class="text-blue-700 hover:text-blue-900">ポモドーロタイマー</a></li>
-                <li><a href="qrgene/" class="text-blue-700 hover:text-blue-900">QRコード生成</a></li>
+                <li><a href="pomodoro/">ポモドーロタイマー</a></li>
+                <li><a href="qrgene/">QRコード生成</a></li>
             </ul>
         </div>
     </div>
