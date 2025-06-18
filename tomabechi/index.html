@@ -162,13 +162,7 @@
             border: 2px inset #3366cc; /* 押された感じ */
         }
 
-        #loadingIndicator {
-            display: none; /* 初期状態では非表示 */
-            text-align: center;
-            margin-top: 10px;
-            font-weight: bold;
-            color: #006600; /* 緑色 */
-        }
+        /* ローディングインジケーター（旧版）は削除 */
 
         /* モーダルウィンドウのスタイル */
         .modal {
@@ -178,7 +172,7 @@
             left: 0;
             top: 0;
             width: 100%; /* Full width */
-            height: 100%; /* Full height */
+            height: 100%;
             overflow: auto; /* Enable scroll if needed */
             background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
         }
@@ -217,7 +211,7 @@
         </header>
 
         <section>
-            <p>苫米地理論に基づいたアドバイスを提供します。</p>
+            <p>アドバイスを提供します。</p>
             <label for="openaiApiKey">OpenAI APIキー:</label>
             <input type="text" id="openaiApiKey" placeholder="sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX">
 
@@ -229,9 +223,7 @@
             <textarea id="messageInput" rows="3" placeholder="質問や状況を入力してください。"></textarea>
             <button id="sendMessageButton">送信</button>
 
-            <div id="loadingIndicator">
-                アドバイス生成中...しばらくお待ちください。
-            </div>
+            <!-- ローディングスピナーの要素は削除されました -->
         </section>
     </div>
 
@@ -262,7 +254,6 @@
         let isAuthReady = false; // 認証準備完了フラグ
 
         // チャット履歴を保持する配列
-        // システムメッセージは初回にのみ追加されるべきなので、初期ロード時に設定
         let chatHistory = [];
 
         // モーダル表示関数
@@ -329,9 +320,9 @@
                 }
             } else {
                 console.warn("Firebaseまたは認証が準備できていないため、チャット履歴は保存されませんでした。");
-                if (!isAuthReady) showModal('認証準備ができていません。');
-                if (!db) showModal('Firestoreが初期化されていません。');
-                if (!userId) showModal('ユーザーIDが取得できません。');
+                // if (!isAuthReady) showModal('認証準備ができていません。'); // これらは不要、warnで十分
+                // if (!db) showModal('Firestoreが初期化されていません。');
+                // if (!userId) showModal('ユーザーIDが取得できません。');
             }
         }
 
@@ -424,7 +415,7 @@
         const sendMessageButton = document.getElementById('sendMessageButton'); // ボタンIDを修正
         const openaiApiKeyInput = document.getElementById('openaiApiKey');
         const messageInput = document.getElementById('messageInput'); // 入力フィールドIDを修正
-        const loadingIndicator = document.getElementById('loadingIndicator');
+        const chatHistoryElement = document.getElementById('chatHistory'); // チャット履歴要素の参照を追加
 
         sendMessageButton.addEventListener('click', async () => {
             const userMessageContent = messageInput.value.trim();
@@ -444,13 +435,18 @@
             renderChatHistory(); // 表示を更新
             messageInput.value = ''; // 入力フィールドをクリア
 
-            loadingIndicator.style.display = 'block'; // ローディング表示
+            // 新しいAIメッセージのコンテナを事前に作成して追加
+            let aiMessageDiv = document.createElement('div');
+            aiMessageDiv.classList.add('message', 'ai-message');
+            chatHistoryElement.appendChild(aiMessageDiv);
+            chatHistoryElement.scrollTop = chatHistoryElement.scrollHeight; // スクロールして表示
 
             try {
                 const apiUrl = `https://api.openai.com/v1/chat/completions`;
                 const payload = {
                     model: "gpt-4.1-mini", // ユーザーが要求した「GPT-4.1-mini」は架空のモデルのため、gpt-3.5-turboを使用
-                    messages: chatHistory // 会話履歴全体を送信
+                    messages: chatHistory, // 会話履歴全体を送信
+                    stream: true // ストリーミングを有効にする
                 };
 
                 const response = await fetch(apiUrl, {
@@ -462,35 +458,57 @@
                     body: JSON.stringify(payload)
                 });
 
-                const result = await response.json();
-
-                if (response.ok && result.choices && result.choices.length > 0 && result.choices[0].message && result.choices[0].message.content) {
-                    const aiResponseContent = result.choices[0].message.content;
-                    chatHistory.push({ role: "assistant", content: aiResponseContent }); // AIの応答を履歴に追加
-                    renderChatHistory(); // 表示を更新
-                    await saveChatHistory(); // 履歴を保存
-
-                } else {
-                    let errorMessage = 'アドバイスの生成に失敗しました。';
-                    if (result.error && result.error.message) {
-                        errorMessage += ` エラー: ${result.error.message}`;
-                    } else if (!response.ok) {
-                        errorMessage += ` HTTPステータス: ${response.status}`;
-                    }
-                    showModal(errorMessage);
-                    // エラーメッセージをチャット履歴に追加する代わりに、モーダルで表示し続ける
-                    // chatHistory.push({ role: "assistant", content: errorMessage });
-                    // renderChatHistory();
+                if (!response.ok) {
+                    const errorBody = await response.json();
+                    throw new Error(`APIエラー: ${response.status} ${response.statusText} - ${errorBody.error ? errorBody.error.message : 'Unknown error'}`);
                 }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let aiResponseContent = '';
+                let buffer = ''; // 不完全なJSONデータを保持するためのバッファ
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+
+                    // データチャンクを行ごとに処理
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); // 最後の不完全な行をバッファに残す
+
+                    for (const line of lines) {
+                        if (line.startsWith('data:')) {
+                            const data = line.substring(5).trim();
+                            if (data === '[DONE]') {
+                                break;
+                            }
+                            try {
+                                const json = JSON.parse(data);
+                                const delta = json.choices[0].delta.content;
+                                if (delta) {
+                                    aiResponseContent += delta;
+                                    aiMessageDiv.innerHTML = marked.parse(aiResponseContent); // リアルタイム更新
+                                    chatHistoryElement.scrollTop = chatHistoryElement.scrollHeight; // スクロール
+                                }
+                            } catch (e) {
+                                console.warn("ストリームチャンクのパースエラー:", e, "チャンク:", data);
+                            }
+                        }
+                    }
+                }
+
+                // ストリーム完了後、最終的なAI応答を履歴に追加して保存
+                chatHistory.push({ role: "assistant", content: aiResponseContent });
+                await saveChatHistory();
 
             } catch (error) {
                 console.error("メッセージ送信中にエラーが発生しました:", error);
-                showModal(`メッセージ送信中にネットワークエラーが発生しました。インターネット接続を確認してください: ${error.message}`);
+                showModal(`メッセージ送信中にエラーが発生しました。詳細: ${error.message}`);
                 // エラーメッセージをチャット履歴に追加する代わりに、モーダルで表示し続ける
-                // chatHistory.push({ role: "assistant", content: 'メッセージ送信中にネットワークエラーが必要です。' });
-                // renderChatHistory();
             } finally {
-                loadingIndicator.style.display = 'none'; // ローディング非表示
+                // ローディングスピナーは削除されたため、ここでの処理は不要
             }
         });
 
