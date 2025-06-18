@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アドバイスアプリ (チャット)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* CSSは主にレイアウトの整理に使用し、デザインはHTML要素と基本的なスタイルで表現 */
+        body {
+            font-family: 'Inter', 'MS Gothic', 'Osaka', sans-serif; /* 平成時代のPCによくあるフォントを意識 */
+            background-color: #e0e0e0; /* 少し暗めのオフホワイト */
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* 上部に寄せる */
+            min-height: 100vh; /* 画面全体を占める */
+            box-sizing: border-box; /* パディングを考慮したボックスモデル */
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px; /* 平成時代の固定幅サイトを意識 */
+            background-color: #ffffff;
+            border: 2px dashed #999; /* 点線ボーダー */
+            padding: 20px;
+            box-shadow: 5px 5px 0px #cccccc; /* レトロな影 */
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: #cccccc; /* 少し暗めのグレー */
+            color: #000;
+            padding: 10px 0;
+            text-align: center;
+            border-bottom: 2px solid #666;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.8em;
+            text-shadow: 1px 1px 0px #fff; /* 白い影 */
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input[type="text"] { /* APIキー入力フィールドのスタイル */
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #999;
+            background-color: #f0f0f0;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+            font-family: 'Inter', 'MS Gothic', 'Osaka', sans-serif;
+        }
+
+        #chatHistory {
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            padding: 15px;
+            min-height: 300px; /* チャット履歴の最低高さを確保 */
+            max-height: 500px; /* チャット履歴の最大高さを設定 */
+            overflow-y: auto; /* 履歴が多くなったらスクロール */
+            margin-bottom: 15px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            padding: 8px 12px;
+            border-radius: 4px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            background-color: #e6f7ff; /* 明るい水色 */
+            align-self: flex-end; /* 右寄せ */
+            border: 1px solid #cceeff;
+        }
+
+        .ai-message {
+            background-color: #f0f0f0; /* 少しグレー */
+            align-self: flex-start; /* 左寄せ */
+            border: 1px solid #e0e0e0;
+        }
+
+        #messageInput {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #999;
+            background-color: #f0f0f0;
+            margin-bottom: 15px;
+            resize: vertical; /* 縦方向のみリサイズ可能 */
+            min-height: 60px; /* 入力エリアの最低高さを設定 */
+            box-sizing: border-box;
+            font-family: 'Inter', 'MS Gothic', 'Osaka', sans-serif;
+        }
+
+        button {
+            background-color: #6699ff; /* 明るい青 */
+            color: white;
+            padding: 10px 20px;
+            border: 2px outset #3366cc; /* 浮き出たボタン */
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: background-color 0.1s ease-in-out;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+
+        button:hover {
+            background-color: #4477ee;
+            border: 2px inset #3366cc; /* 押された感じ */
+        }
+
+        #loadingIndicator {
+            display: none; /* 初期状態では非表示 */
+            text-align: center;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #006600; /* 緑色 */
+        }
+
+        /* モーダルウィンドウのスタイル */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto; /* 15% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%; /* Could be more or less, depending on screen size */
+            max-width: 500px;
+            box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+            text-align: center;
+            position: relative;
+        }
+
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>アドバイスアプリ (チャット)</h1>
+        </header>
+
+        <section>
+            <p>苫米地理論に基づいたアドバイスを提供します。</p>
+            <label for="openaiApiKey">OpenAI APIキー:</label>
+            <input type="text" id="openaiApiKey" placeholder="sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX">
+
+            <div id="chatHistory">
+                <!-- ここにチャット履歴が表示されます -->
+            </div>
+
+            <label for="messageInput">あなたのメッセージ:</label>
+            <textarea id="messageInput" rows="3" placeholder="質問や状況を入力してください。"></textarea>
+            <button id="sendMessageButton">送信</button>
+
+            <div id="loadingIndicator">
+                アドバイス生成中...しばらくお待ちください。
+            </div>
+        </section>
+    </div>
+
+    <!-- モーダルウィンドウ -->
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <p id="modalMessage"></p>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase関連のグローバル変数（Canvas環境から提供される）
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Firebaseのインポート
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase初期化と認証
+        let app;
+        let db;
+        let auth;
+        let userId = 'anonymous'; // デフォルトの匿名ID
+        let isAuthReady = false; // 認証準備完了フラグ
+
+        // チャット履歴を保持する配列
+        // システムメッセージは初回にのみ追加されるべきなので、初期ロード時に設定
+        let chatHistory = [];
+
+        // モーダル表示関数
+        function showModal(message) {
+            const modal = document.getElementById('myModal');
+            const modalMessage = document.getElementById('modalMessage');
+            modalMessage.textContent = message;
+            modal.style.display = 'block';
+        }
+
+        // モーダルを閉じる関数
+        function closeModal() {
+            const modal = document.getElementById('myModal');
+            modal.style.display = 'none';
+        }
+
+        // モーダルを閉じるイベントリスナー
+        document.querySelector('.close-button').addEventListener('click', closeModal);
+        window.addEventListener('click', (event) => {
+            const modal = document.getElementById('myModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        });
+
+        // チャット履歴をUIに表示する関数
+        function renderChatHistory() {
+            const chatHistoryElement = document.getElementById('chatHistory');
+            chatHistoryElement.innerHTML = ''; // 一度クリア
+            chatHistory.forEach(message => {
+                if (message.role === 'system') return; // システムメッセージは表示しない
+
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message');
+                messageDiv.classList.add(message.role === 'user' ? 'user-message' : 'ai-message');
+                messageDiv.textContent = message.content;
+                chatHistoryElement.appendChild(messageDiv);
+            });
+            // 最新のメッセージが見えるようにスクロール
+            chatHistoryElement.scrollTop = chatHistoryElement.scrollHeight;
+        }
+
+        // Firebaseにチャット履歴を保存する関数
+        async function saveChatHistory() {
+            if (isAuthReady && db && userId) {
+                try {
+                    // JSON.stringifyでオブジェクトを文字列に変換して保存
+                    const chatDocRef = doc(db, `artifacts/${appId}/users/${userId}/chatData`, 'mainChat');
+                    await setDoc(chatDocRef, {
+                        history: JSON.stringify(chatHistory),
+                        lastUpdated: new Date()
+                    }, { merge: true }); // 既存のフィールドはマージ
+                    console.log("チャット履歴が保存されました。");
+                } catch (firestoreError) {
+                    console.error("Firestoreへの保存に失敗しました:", firestoreError);
+                    showModal(`Firestoreへの保存に失敗しました: ${firestoreError.message}`);
+                }
+            } else {
+                console.warn("Firebaseまたは認証が準備できていないため、チャット履歴は保存されませんでした。");
+                if (!isAuthReady) showModal('認証準備ができていません。');
+                if (!db) showModal('Firestoreが初期化されていません。');
+                if (!userId) showModal('ユーザーIDが取得できません。');
+            }
+        }
+
+        // Firebaseからチャット履歴をロードする関数
+        async function loadChatHistory() {
+            if (isAuthReady && db && userId) {
+                try {
+                    const chatDocRef = doc(db, `artifacts/${appId}/users/${userId}/chatData`, 'mainChat');
+                    const docSnap = await getDoc(chatDocRef);
+
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        if (data.history) {
+                            chatHistory = JSON.parse(data.history); // JSON.parseで文字列をオブジェクトに戻す
+                            console.log("チャット履歴がロードされました。");
+                        }
+                    } else {
+                        console.log("既存のチャット履歴はありません。新規作成します。");
+                    }
+                } catch (firestoreError) {
+                    console.error("Firestoreからのロードに失敗しました:", firestoreError);
+                    showModal(`Firestoreからのロードに失敗しました: ${firestoreError.message}`);
+                }
+            } else {
+                console.warn("Firebaseまたは認証が準備できていないため、チャット履歴はロードされませんでした。");
+            }
+
+            // ロード後にシステムメッセージが存在しない場合のみ追加
+            const systemMessageExists = chatHistory.some(msg => msg.role === 'system' && msg.content.includes('Tomabechi Theory'));
+            if (!systemMessageExists) {
+                chatHistory.unshift({ role: "system", content: "You are an AI that provides advice based on Tomabechi Theory. Provide detailed, actionable advice focusing on concepts like 'Goal Setting (現状の外側)', 'Comfort Zone', 'Efficacy', 'Affirmation', and 'Abstract Thinking'." });
+            }
+            renderChatHistory(); // ロードまたは初期化後に表示を更新
+        }
+
+        // Firebase初期化と認証のセットアップ
+        async function setupFirebase() {
+            try {
+                if (Object.keys(firebaseConfig).length > 0) {
+                    app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+
+                    // 認証状態の監視
+                    onAuthStateChanged(auth, async (user) => {
+                        if (user) {
+                            userId = user.uid;
+                        } else {
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                            userId = auth.currentUser?.uid || crypto.randomUUID(); // 認証後または匿名認証後のID
+                        }
+                        isAuthReady = true; // 認証準備完了
+                        await loadChatHistory(); // 認証完了後にチャット履歴をロード
+                    });
+                } else {
+                    showModal('Firebase設定が利用できません。匿名モードで続行します。チャット履歴は保存されません。');
+                    userId = crypto.randomUUID(); // Firebaseなしの場合の匿名ID
+                    isAuthReady = true;
+                    // Firebaseがない場合でもシステムメッセージを追加してレンダリング
+                    chatHistory.unshift({ role: "system", content: "You are an AI that provides advice based on Tomabechi Theory. Provide detailed, actionable advice focusing on concepts like 'Goal Setting (現状の外側)', 'Comfort Zone', 'Efficacy', 'Affirmation', and 'Abstract Thinking'." });
+                    renderChatHistory();
+                }
+            } catch (error) {
+                console.error("Firebaseの初期化または認証に失敗しました:", error);
+                showModal(`エラー: Firebaseの初期化に失敗しました。${error.message}`);
+                userId = crypto.randomUUID(); // エラー時の匿名ID
+                isAuthReady = true;
+                // エラー時でもシステムメッセージを追加してレンダリング
+                chatHistory.unshift({ role: "system", content: "You are an AI that provides advice based on Tomabechi Theory. Provide detailed, actionable advice focusing on concepts like 'Goal Setting (現状の外側)', 'Comfort Zone', 'Efficacy', 'Affirmation', and 'Abstract Thinking'." });
+                renderChatHistory();
+            }
+        }
+
+        // アプリケーション起動時にFirebaseをセットアップ
+        window.onload = setupFirebase;
+
+        const sendMessageButton = document.getElementById('sendMessageButton'); // ボタンIDを修正
+        const openaiApiKeyInput = document.getElementById('openaiApiKey');
+        const messageInput = document.getElementById('messageInput'); // 入力フィールドIDを修正
+        const loadingIndicator = document.getElementById('loadingIndicator');
+
+        sendMessageButton.addEventListener('click', async () => {
+            const userMessageContent = messageInput.value.trim();
+            if (!userMessageContent) {
+                showModal('メッセージが空です。質問や状況を入力してください。');
+                return;
+            }
+
+            const openaiApiKey = openaiApiKeyInput.value.trim();
+            if (!openaiApiKey) {
+                showModal('OpenAI APIキーを入力してください。');
+                return;
+            }
+
+            // ユーザーメッセージを履歴に追加
+            chatHistory.push({ role: "user", content: userMessageContent });
+            renderChatHistory(); // 表示を更新
+            messageInput.value = ''; // 入力フィールドをクリア
+
+            loadingIndicator.style.display = 'block'; // ローディング表示
+
+            try {
+                const apiUrl = `https://api.openai.com/v1/chat/completions`;
+                const payload = {
+                    model: "gpt-4.1-mini", // ユーザーが要求した「GPT-4.1-mini」は架空のモデルのため、gpt-3.5-turboを使用
+                    messages: chatHistory // 会話履歴全体を送信
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${openaiApiKey}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.choices && result.choices.length > 0 && result.choices[0].message && result.choices[0].message.content) {
+                    const aiResponseContent = result.choices[0].message.content;
+                    chatHistory.push({ role: "assistant", content: aiResponseContent }); // AIの応答を履歴に追加
+                    renderChatHistory(); // 表示を更新
+                    await saveChatHistory(); // 履歴を保存
+
+                } else {
+                    let errorMessage = 'アドバイスの生成に失敗しました。';
+                    if (result.error && result.error.message) {
+                        errorMessage += ` エラー: ${result.error.message}`;
+                    } else if (!response.ok) {
+                        errorMessage += ` HTTPステータス: ${response.status}`;
+                    }
+                    showModal(errorMessage);
+                    // エラーメッセージをチャット履歴に追加する代わりに、モーダルで表示し続ける
+                    // chatHistory.push({ role: "assistant", content: errorMessage });
+                    // renderChatHistory();
+                }
+
+            } catch (error) {
+                console.error("メッセージ送信中にエラーが発生しました:", error);
+                showModal(`メッセージ送信中にネットワークエラーが発生しました。インターネット接続を確認してください: ${error.message}`);
+                // エラーメッセージをチャット履歴に追加する代わりに、モーダルで表示し続ける
+                // chatHistory.push({ role: "assistant", content: 'メッセージ送信中にネットワークエラーが発生しました。' });
+                // renderChatHistory();
+            } finally {
+                loadingIndicator.style.display = 'none'; // ローディング非表示
+            }
+        });
+
+        // Enterキーでメッセージ送信
+        messageInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && !event.shiftKey) { // Shift+Enterで改行、Enterのみで送信
+                event.preventDefault(); // デフォルトの改行を防ぐ
+                sendMessageButton.click();
+            }
+        });
+    </script>
+</body>
+</html>
