@@ -1,0 +1,293 @@
+
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>周波数プレイヤー（プリセット強化版）</title>
+<style>
+  :root{--bg:#0b1022;--panel:#0f172a;--card:#111827;--ink:#e5e7eb;--muted:#94a3b8;--acc:#22d3ee;--line:rgba(255,255,255,.09)}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 70% -20%,#1a2a6c20,transparent),linear-gradient(180deg,#0a0f1f,#0b1022);
+    color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji"}
+  .wrap{max-width:1100px;margin:0 auto;padding:24px}
+  h1{font-size:24px;margin:0 0 10px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 10px 30px #00000030}
+  .grid{display:grid;gap:12px}
+  @media(min-width:720px){.grid-2{grid-template-columns:1.2fr .8fr}}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  label{font-size:12px;color:var(--muted)}
+  input[type="number"],select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#0b1022;color:var(--ink);outline:none}
+  input[type="range"]{width:100%}
+  .btn{cursor:pointer;border:none;border-radius:12px;padding:10px 14px;font-weight:600;color:#0a0f1f;background:var(--acc)}
+  .btn.secondary{background:#1f2937;color:var(--ink);border:1px solid var(--line)}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px dashed var(--line)}
+  .btn.sm{padding:8px 10px;font-size:13px;border-radius:10px}
+  .meter{height:6px;background:#0b1022;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+  .bar{height:100%;width:0;background:linear-gradient(90deg,#22d3ee,#60a5fa)}
+  /* Presets */
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}
+  .search{flex:1;min-width:220px;position:relative}
+  .search input{width:100%;padding:10px 12px 10px 36px;border-radius:12px;border:1px solid var(--line);background:#0b1022;color:var(--ink)}
+  .search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.6}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:12px;color:var(--ink);cursor:pointer}
+  .chip[data-active="true"]{background:#162036;border-color:#1f3b4d}
+  .cards{display:grid;grid-template-columns:1fr;gap:10px}
+  @media(min-width:720px){.cards{grid-template-columns:repeat(2,1fr)}}
+  @media(min-width:980px){.cards{grid-template-columns:repeat(3,1fr)}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;gap:12px;position:relative;overflow:hidden}
+  .hz{font-size:26px;font-weight:800}
+  .badge{font-size:11px;color:#a5f3fc;border:1px solid #12404a;background:#0b2a30;border-radius:999px;padding:3px 8px;margin-left:6px}
+  .desc{color:var(--muted);font-size:13px;margin-top:6px}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .tag{font-size:11px;border:1px solid var(--line);padding:3px 6px;border-radius:999px;color:#cbd5e1}
+  .actions{margin-top:auto;display:flex;gap:8px}
+  .side{margin-left:auto;text-align:right}
+  .small{font-size:11px;color:var(--muted)}
+  .corner{position:absolute;right:-40px;top:-40px;width:120px;height:120px;background:radial-gradient(closest-side,#1e293b55,transparent)}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>周波数プレイヤー</h1>
+    <div class="sub">単音・バイノーラル対応。下のプリセットは「一般に語られる効能」を併記しています（科学的根拠は限定的）。</div>
+
+    <div class="panel grid grid-2" style="margin-bottom:16px">
+      <div>
+        <div class="grid" style="grid-template-columns:repeat(6,1fr);gap:10px">
+          <div style="grid-column: span 2">
+            <label>周波数 (Hz)</label>
+            <input id="freq" type="number" min="1" step="0.01" value="528">
+          </div>
+          <div style="grid-column: span 2">
+            <label>再生時間 (秒)</label>
+            <input id="secs" type="number" min="0.1" step="0.1" value="5">
+          </div>
+          <div>
+            <label>音量</label>
+            <input id="vol" type="range" min="0" max="1" step="0.01" value="0.15">
+          </div>
+          <div>
+            <label>波形</label>
+            <select id="wave">
+              <option value="sine" selected>正弦波 (sine)</option>
+              <option value="triangle">triangle</option>
+              <option value="square">square</option>
+              <option value="sawtooth">sawtooth</option>
+            </select>
+          </div>
+          <div style="grid-column: span 3" class="row">
+            <label>バイノーラルビート</label>
+            <label class="row" style="gap:6px"><input id="binaural" type="checkbox"> 有効</label>
+            <label>差分(Hz)</label>
+            <input id="beat" type="number" min="0" step="0.1" value="7.83" style="max-width:120px">
+          </div>
+          <div style="grid-column: span 3" class="row">
+            <label>低周波（<20Hz）を鳴らしたい場合</label>
+            <label class="row" style="gap:6px"><input id="lfAssist" type="checkbox" checked> キャリア200Hzで擬似再生</label>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;gap:10px">
+          <button id="play" class="btn">再生</button>
+          <button id="stop" class="btn secondary">停止</button>
+          <button id="test" class="btn ghost">デバイス解錠（音が出ない時）</button>
+        </div>
+        <div class="meter" style="margin-top:12px"><div class="bar" id="bar"></div></div>
+        <div class="small" style="margin-top:6px">※耳・機材保護のため音量は小さめから。長時間・大音量は避けてください。</div>
+      </div>
+      <div>
+        <div class="panel" style="background:#0d1226;border-style:dashed">
+          <div class="small" style="margin-bottom:6px">ヒント</div>
+          <div class="small">・7.83Hz（シューマン共振）など可聴域外は直接は聞こえません。バイノーラルで左右差として感じやすくなります。<br>・スマホはユーザー操作後でないと音が鳴らないことがあります（上の「デバイス解錠」を押して再試行）。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="toolbar">
+        <div class="search"><input id="q" placeholder="プリセットを検索（例：集中、愛、直感、解毒、Schumann）"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></div>
+        <div class="chips" id="chips"></div>
+      </div>
+      <div class="cards" id="cards"></div>
+      <div class="small" style="margin-top:8px">※効能は民間伝承・代替療法の文脈で語られる内容です。医学的な効果を保証するものではありません。</div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  let ctx, active = [];
+  const $ = id => document.getElementById(id);
+  const freq = $('freq'), secs = $('secs'), vol = $('vol'), wave = $('wave');
+  const binaural = $('binaural'), beat = $('beat'), lfAssist = $('lfAssist');
+  const bar = $('bar');
+  const q = $('q');
+  const cardsEl = $('cards');
+  const chipsEl = $('chips');
+
+  const PRESETS = [
+    {hz:40, name:'集中/認知活性（ガンマ）', tags:['集中','認知','作業'], eff:'脳のガンマ帯域を刺激すると言われ、集中・認知処理の促進に用いられることがある'},
+    {hz:174, name:'安定・痛みの緩和', tags:['安定','鎮静','安心'], eff:'深い安定感やストレス・痛みの緩和を狙う用途で言及される'},
+    {hz:285, name:'回復・修復', tags:['回復','修復','リセット'], eff:'組織の修復・回復を助けるという文脈で語られる'},
+    {hz:396, name:'恐れ・罪悪感の解放', tags:['感情解放','前進'], eff:'恐怖や罪悪感の軽減、前向きさの回復に'},
+    {hz:417, name:'変化の促進/解放', tags:['浄化','リセット'], eff:'過去の影響やネガティブさを解放し、変化を受け入れる'},
+    {hz:432, name:'調和・リラックス', tags:['調和','落ち着き'], eff:'自然の調和感とされ、リラックス用BGM等で人気'},
+    {hz:528, name:'愛・癒し（DNA修復）', tags:['愛','癒し','安らぎ'], eff:'愛や癒しの周波数として広く知られる（DNA修復は主張に留まる）'},
+    {hz:639, name:'人間関係の調和', tags:['関係','調和','共感'], eff:'コミュニケーションや関係性の調和を意図する場面で言及'},
+    {hz:741, name:'直感・創造性/解毒', tags:['直感','創造','デトックス'], eff:'創造性の刺激やデトックス（解毒）に関連づけられる'},
+    {hz:852, name:'内省・高次意識', tags:['内省','覚醒'], eff:'内省/直感の深化や気づきの促進'},
+    {hz:963, name:'静寂・精神性', tags:['精神性','瞑想'], eff:'精神性・静けさを意識した瞑想向けに'},
+    {hz:7.83, name:'シューマン共振（地球の基本振動）', tags:['Schumann','安定','グラウンディング'], eff:'地球の基本共振とされ、安定や落ち着きのメタファとして用いられる', low:true},
+  ];
+
+  const TAGS = ['集中','リラックス','愛','調和','直感','創造','回復','解毒','内省','瞑想','安定'];
+
+  // chips
+  TAGS.forEach(t => {
+    const el = document.createElement('button');
+    el.className = 'chip'; el.textContent = t; el.dataset.active = 'false';
+    el.onclick = () => { el.dataset.active = el.dataset.active === 'true' ? 'false' : 'true'; render(); };
+    chipsEl.appendChild(el);
+  });
+
+  function getActiveTags(){
+    return Array.from(chipsEl.querySelectorAll('.chip'))
+      .filter(c=>c.dataset.active==='true').map(c=>c.textContent);
+  }
+
+  function render(){
+    const query = q.value.trim().toLowerCase();
+    const activeTags = getActiveTags();
+    cardsEl.innerHTML = '';
+
+    PRESETS.filter(p => {
+      const hitQ = !query || p.name.toLowerCase().includes(query) || String(p.hz).includes(query) || p.tags.some(t=>t.toLowerCase().includes(query));
+      const hitT = activeTags.length === 0 || activeTags.some(t=>p.tags.includes(t));
+      return hitQ && hitT;
+    }).forEach(p => cardsEl.appendChild(presetCard(p)));
+  }
+
+  function presetCard(p){
+    const card = document.createElement('div'); card.className='card';
+    const left = document.createElement('div');
+    left.innerHTML = `<div class="hz">${p.hz}<span class="small"> Hz</span><span class="badge">${p.low? '低周波/要工夫':'可聴域'}</span></div>
+                      <div class="desc">${p.eff}</div>
+                      <div class="tags">${p.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+                      <div class="actions"><button class="btn sm" data-play>この周波数で再生</button>
+                      <button class="btn sm secondary" data-binaural>バイノーラルで再生</button></div>`;
+
+    const side = document.createElement('div'); side.className='side';
+    side.innerHTML = `<div class="small">波形: <strong id="w-${p.hz}"></strong></div>
+                      <div class="small">推奨: 音量小さめ / ${p.low? '差分='+p.hz+'Hzで左右差':'単音OK'}</div>`;
+
+    const corner = document.createElement('div'); corner.className='corner';
+    card.append(left, side, corner);
+
+    // reflect current UI state
+    side.querySelector(`#w-${p.hz}`).textContent = wave.value;
+
+    // actions
+    left.querySelector('[data-play]').onclick = () => {
+      freq.value = p.hz;
+      if (p.low) { binaural.checked = true; beat.value = p.hz; lfAssist.checked = true; }
+      playNow();
+    };
+    left.querySelector('[data-binaural]').onclick = () => {
+      freq.value = p.hz; binaural.checked = true; beat.value = p.low? p.hz : Math.min(10, Math.max(1, p.hz*0.015));
+      if (p.low) lfAssist.checked = true; playNow();
+    };
+
+    return card;
+  }
+
+  q.addEventListener('input', render);
+
+  async function ensureContext(){
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') await ctx.resume();
+    return ctx;
+  }
+
+  function makeGainRamp(g, startTime, dur, peak){
+    const atk = Math.min(0.02, dur*0.2);
+    const rel = Math.min(0.05, dur*0.2);
+    const susTime = Math.max(0, dur - atk - rel);
+    g.gain.setValueAtTime(0, startTime);
+    g.gain.linearRampToValueAtTime(peak, startTime + atk);
+    g.gain.setValueAtTime(peak, startTime + atk + susTime);
+    g.gain.linearRampToValueAtTime(0, startTime + atk + susTime + rel);
+  }
+
+  function startTone({f=440, duration=1.0, volume=0.1, type='sine', binaural=false, diff=7, lfAssist=true}){
+    const startAt = ctx.currentTime + 0.02;
+    const g = ctx.createGain();
+    g.connect(ctx.destination);
+    makeGainRamp(g, startAt, duration, volume);
+
+    // progress bar
+    bar.style.transition = 'none'; bar.style.width = '0%';
+    requestAnimationFrame(() => { bar.style.transition = `width ${duration}s linear`; bar.style.width = '100%'; });
+
+    let nodes = [];
+    if (binaural) {
+      const base = (f < 20 && lfAssist) ? 200 : f;
+      const leftOsc = ctx.createOscillator();
+      const rightOsc = ctx.createOscillator();
+      leftOsc.type = rightOsc.type = type;
+      leftOsc.frequency.value = base - (diff/2);
+      rightOsc.frequency.value = base + (diff/2);
+
+      const pL = ctx.createStereoPanner(); pL.pan.value = -1;
+      const pR = ctx.createStereoPanner(); pR.pan.value = 1;
+
+      leftOsc.connect(pL).connect(g);
+      rightOsc.connect(pR).connect(g);
+
+      leftOsc.start(startAt); rightOsc.start(startAt);
+      leftOsc.stop(startAt + duration); rightOsc.stop(startAt + duration);
+      nodes.push(leftOsc, rightOsc, g, pL, pR);
+    } else {
+      const osc = ctx.createOscillator();
+      osc.type = type; osc.frequency.value = f; osc.connect(g);
+      osc.start(startAt); osc.stop(startAt + duration);
+      nodes.push(osc, g);
+    }
+
+    const killer = setTimeout(() => stopAll(), (duration + 0.1) * 1000);
+    active.push({nodes, killer});
+  }
+
+  function stopAll(){
+    active.forEach(({nodes, killer}) => {
+      clearTimeout(killer);
+      try{ nodes.forEach(n => { if(n.stop){try{n.stop(0)}catch{}} if(n.disconnect){try{n.disconnect()}catch{}} }); }catch{}
+    });
+    active = [];
+    bar.style.transition = 'none'; bar.style.width = '0%';
+  }
+
+  async function playNow(){
+    const f = parseFloat(freq.value);
+    const duration = Math.max(0.05, parseFloat(secs.value));
+    const volume = parseFloat(vol.value);
+    const type = wave.value;
+    const useBB = binaural.checked;
+    const diff = Math.abs(parseFloat(beat.value)) || 0;
+    const useAssist = lfAssist.checked;
+
+    await ensureContext();
+    stopAll();
+    startTone({f, duration, volume, type, binaural:useBB, diff, lfAssist:useAssist});
+  }
+
+  $('play').onclick = playNow;
+  $('stop').onclick = stopAll;
+  $('test').onclick = async () => { await ensureContext(); };
+  window.addEventListener('touchstart', async () => { if (ctx && ctx.state==='suspended') await ctx.resume(); }, {once:true});
+
+  render();
+})();
+</script>
+</body>
+</html>
